@@ -37,4 +37,26 @@ function renderTools(){ $('tools').innerHTML=items.map(t=>`<button class="tool $
 function selectTool(id){active=id;const t=items.find(x=>x.id===id);$('tooltitle').textContent=t.icon+' '+t.title;$('prompt').value=t.sample;$('result').style.display='none';$('notice').textContent='';renderTools();}
 function generate(){const p=$('prompt').value.trim();if(!p){$('notice').textContent='Please type your idea first.';return}if(credits<1){$('notice').textContent='No demo credits left. A real credit/payment system is not connected yet.';return}credits--;$('credits').textContent=credits;$('credits2').textContent=credits;const t=items.find(x=>x.id===active);const lang=$('language').value,dur=$('duration').value;let content=`${t.title} (${lang}, ${dur})\\n\\nYour idea: ${p}\\n\\nOpening hook: “Wait until you see what happens next…”\\n\\nMain content: Present the idea clearly, use natural dialogue and expressive reactions, and keep the pacing engaging.\\n\\nEnding: Finish with a memorable moment and invite viewers to follow for more.\\n\\nDEMO NOTE: This is sample text, not a live AI-generated response. Connect a real AI service to create original results.`;$('output').textContent=content;$('result').style.display='block';$('notice').textContent='Demo result created in your browser. This version does not call a real AI service.';history.unshift({title:t.title,prompt:p,content});history=history.slice(0,5);$('history').innerHTML=history.map((h,i)=>`<button class="history" style="display:block;width:100%;text-align:left;cursor:pointer;margin-top:8px" data-history="${i}"><b>${h.title}</b><br><span style="color:#9999b5">${h.prompt}</span></button>`).join('');document.querySelectorAll('[data-history]').forEach(b=>b.onclick=()=>{$('output').textContent=history[+b.dataset.history].content;$('result').style.display='block';$('prompt').value=history[+b.dataset.history].prompt;});}
 $('generate').onclick=generate;$('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('output').textContent);$('notice').textContent='Copied to clipboard.'}catch{$('notice').textContent='Select the result text and copy it manually.'}};renderTools();
-</script></body></html>
+</script>
+<script>
+async function askNexoraAI(prompt) {
+  const response = await fetch(
+    "/.netlify/functions/generate",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt })
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "AI request failed");
+  }
+
+  return data.answer;
+}
+</script> </body></html>
