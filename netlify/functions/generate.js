@@ -1,13 +1,15 @@
 
 exports.handler = async (event) => {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify({
-        error: "Method not allowed. Use POST."
+        error: "Please use POST."
       })
     };
   }
@@ -18,35 +20,30 @@ exports.handler = async (event) => {
     if (!apiKey) {
       return {
         statusCode: 500,
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
           error: "GEMINI_API_KEY is missing in Netlify."
         })
       };
     }
 
-    const body = JSON.parse(event.body || "{}");
-    const prompt = body.prompt;
+    const { prompt } = JSON.parse(event.body || "{}");
 
-    if (
-      typeof prompt !== "string" ||
-      !prompt.trim()
-    ) {
+    if (typeof prompt !== "string" || !prompt.trim()) {
       return {
         statusCode: 400,
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
           error: "Please enter a question."
         })
       };
     }
 
+    const model = "gemini-2.5-flash";
+
     const response = await fetch(
-      ""https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,62 +66,45 @@ exports.handler = async (event) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(
-        "Gemini API error:",
-        JSON.stringify(data.error || {})
-      );
+      console.error("Gemini error:", data.error);
 
       return {
         statusCode: 502,
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
-          error:
-            data.error?.message ||
-            "Gemini could not answer. Please try again."
+          error: data.error?.message || "Gemini request failed."
         })
       };
     }
 
-    const answer =
-      data.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text || "")
-        .join("")
-        .trim() || "";
+    const answer = data.candidates?.[0]?.content?.parts
+      ?.map(part => part.text || "")
+      .join("")
+      .trim();
 
     if (!answer) {
       return {
         statusCode: 502,
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
-          error: "Gemini returned no answer. Please try again."
+          error: "Gemini returned no answer."
         })
       };
     }
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store"
-      },
-      body: JSON.stringify({
-        answer: answer
-      })
+      headers,
+      body: JSON.stringify({ answer })
     };
   } catch (error) {
-    console.error("Nexora function error:", error);
+    console.error("Function error:", error);
 
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify({
-        error: "Something went wrong. Please try again."
+        error: "Unexpected server error."
       })
     };
   }
